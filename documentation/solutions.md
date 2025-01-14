@@ -55,7 +55,7 @@ A **self-hosted web application** deployed on the company’s server, accessible
 
 4. **Download/Save**:
     - Save the corrected document back to the server or download it locally.
-
+cdc
 ---
 
 ## Solution 2: Local Desktop App
