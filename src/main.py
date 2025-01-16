@@ -1,10 +1,7 @@
 import os
-from ui.interface import start_gui
 from pdf_utils.extract_text_from_pdf import extract_text_from_pdf
 from pdf_utils.save_corrected_pdf import save_corrected_pdf
-from text_utils.restore_punctuation import restore_punctuation
 from text_utils.correct_spelling import correct_spelling_advanced, correct_spelling_simple
-import threading
 
 def process_pdf(input_pdf_path, loading_window):
     """Process the PDF file: extract text, correct, and save as a new PDF."""
