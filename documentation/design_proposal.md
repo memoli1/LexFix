@@ -1,10 +1,10 @@
 # Proposed Solutions for User Interface Design
 
 ## Context
-The application is being developed for a company managing court documents with their own server. The goal is to process these documents securely, efficiently, 
+The application is being developed for a company managing court documents with their own server. The goal is to process these documents securely, efficiently,
 and in a user-friendly manner.
 
-Below are two possible solutions: a **local web app** and a **local desktop app**, with the recommendation leaning towards 
+Below are two possible solutions: a **local web app** and a **local desktop app**, with the recommendation leaning towards
 the web app due to its scalability and centralized management.
 
 ---

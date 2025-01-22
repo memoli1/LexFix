@@ -1,57 +1,119 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
-import threading
+from word_utils.process_word import WordProcessor
 
-class LoadingWindow:
-    def __init__(self, parent):
-        """Create a window that shows a loading message while the process is running."""
-        self.window = tk.Toplevel(parent)
-        self.window.title("Processing...")
-        self.window.geometry("300x150")
-        self.label = tk.Label(self.window, text="Processing your PDF...\nPlease wait...", font=("Helvetica", 12))
-        self.label.pack(pady=20)
+def start_gui():
+    """Start the GUI for user interaction."""
+    processor = WordProcessor(language='en-US')  # Initialize the WordProcessor
 
-        self.close_button = None  # Will be created later when processing is complete
+    def preview_errors(file_path):
+        """Preview and allow selective correction of errors."""
+        errors = processor.check_errors_in_word(file_path)  # Fetch errors
+        if not errors:
+            messagebox.showinfo("No Errors Found", "No errors were found in the document!")
+            return
 
-    def show_result(self, message):
-        """Update the window with the result of the process."""
-        self.label.config(text=message)
-        self.label.pack(pady=20)
+        # Store user selections for corrections
+        selected_errors = [tk.BooleanVar(value=True) for _ in errors]
 
-        if not self.close_button:  # Ensure the button is only created once
-            # Add a button to close the window after the process
-            self.close_button = tk.Button(self.window, text="Close", command=self.window.destroy)
-            self.close_button.pack(pady=10)
+        # Open a new window for the error preview
+        preview_window = tk.Toplevel()
+        preview_window.title("Error Preview")
+        preview_window.geometry("600x400")
 
-    def close(self):
-        """Close the loading window."""
-        self.window.destroy()
+        canvas = tk.Canvas(preview_window)
+        scrollbar = tk.Scrollbar(preview_window, command=canvas.yview)
+        frame = tk.Frame(canvas)
 
-def start_gui(process_pdf_callback):
-    """Start the GUI to handle file selection and processing."""
-    # Create the main window
+        # Configure the canvas and scrollbar
+        canvas.create_window((0, 0), window=frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Populate the error preview with selection options
+        for i, error in enumerate(errors):
+            error_frame = tk.Frame(frame, padx=10, pady=5)
+            error_frame.pack(fill="x")
+
+            error_label = tk.Label(
+                error_frame,
+                text=f"Error {i + 1}: {error['context']}",
+                fg="red",
+                wraplength=550,
+                justify="left"
+            )
+            error_label.pack(anchor="w")
+
+            suggestion_label = tk.Label(
+                error_frame,
+                text=f"Suggestion: {', '.join(error['suggestions'])}",
+                fg="green",
+                wraplength=550,
+                justify="left"
+            )
+            suggestion_label.pack(anchor="w")
+
+            select_checkbox = tk.Checkbutton(
+                error_frame,
+                text="Apply this correction",
+                variable=selected_errors[i]
+            )
+            select_checkbox.pack(anchor="w")
+
+        # Add "Confirm Corrections" button
+        def confirm_corrections():
+            # Collect selected errors
+            selected = [errors[i] for i, var in enumerate(selected_errors) if var.get()]
+            if not selected:
+                messagebox.showinfo("No Corrections", "No corrections were selected!")
+                preview_window.destroy()
+                return
+
+            # Save the corrected file
+            output_path = filedialog.asksaveasfilename(
+                defaultextension=".docx",
+                filetypes=[("Word Documents", "*.docx")],
+                title="Save Corrected File As"
+            )
+            if not output_path:
+                messagebox.showinfo("No Output File", "Please specify where to save the corrected file.")
+                return
+
+            try:
+                processor.correct_text_in_word(file_path, output_path, selected)
+                messagebox.showinfo("Success", f"Corrected file saved to {output_path}")
+                preview_window.destroy()
+            except Exception as e:
+                messagebox.showerror("Error", f"An error occurred: {e}")
+
+        confirm_button = tk.Button(preview_window, text="Confirm Corrections", command=confirm_corrections)
+        confirm_button.pack(pady=10)
+
+        frame.update_idletasks()
+        canvas.configure(scrollregion=canvas.bbox("all"))
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        preview_window.mainloop()
+
+    def process_file():
+        """Handle file selection, error preview, and correction."""
+        file_path = filedialog.askopenfilename(filetypes=[("Word Documents", "*.docx")])
+        if not file_path:
+            messagebox.showinfo("No File Selected", "Please select a Word file to process.")
+            return
+
+        # Preview errors
+        preview_errors(file_path)
+
+    # Set up the main GUI window
     root = tk.Tk()
-    root.title("LexFix")
+    root.title("LexFix: Word Document Processor")
+    root.geometry("400x200")
 
-    # Set the initial size of the window (width x height)
-    root.geometry("600x400")
+    label = tk.Label(root, text="Select a Word document to process", padx=10, pady=10)
+    label.pack()
 
-    # Create and place widgets (buttons, labels, etc.)
-    label = tk.Label(root, text="Choose a PDF file to correct")
-    label.pack(pady=10)
+    select_button = tk.Button(root, text="Select File", command=process_file)
+    select_button.pack(pady=20)
 
-    def open_file():
-        """Open file dialog to choose a PDF."""
-        pdf_path = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf")])
-        if pdf_path:
-            # Create the loading window
-            loading_window = LoadingWindow(root)
-
-            # Run PDF processing in a separate thread to keep the GUI responsive
-            threading.Thread(target=process_pdf_callback, args=(pdf_path, loading_window), daemon=True).start()
-
-    open_button = tk.Button(root, text="Open PDF", command=open_file)
-    open_button.pack(pady=20)
-
-    # Start the GUI loop
     root.mainloop()
